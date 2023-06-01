@@ -7,33 +7,35 @@
   <artifactId>org.eclipse.lsp4jakarta.ls</artifactId>
   <version>0.1.1-SNAPSHOT</version>
 
-	<name>Eclipse LSP4Jakarta Language Server</name>
-	<description>Eclipse LSP4Jakarta Language Server</description>
+  <name>Eclipse LSP4Jakarta Language Server</name>
+  <description>Eclipse LSP4Jakarta Language Server</description>
 
-	<organization>
-		<name>Eclipse LSP4Jakarta</name>
-		<url>https://github.com/eclipse/lsp4jakarta</url>
-	</organization>
-	
-	<scm>
-	    <connection>scm:git:git@github.com:eclipse/lsp4jakarta.git</connection>
-	    <developerConnection>scm:git:git@github.com:eclipse/lsp4jakarta.git</developerConnection>
-	    <url>git@github.com:eclipse/lsp4jakarta.git</url>
-	    <tag>HEAD</tag>
-  	</scm>
+  <organization>
+    <name>Eclipse LSP4Jakarta</name>
+    <url>https://github.com/eclipse/lsp4jakarta</url>
+  </organization>
+  
+  <scm>
+      <connection>scm:git:git@github.com:eclipse/lsp4jakarta.git</connection>
+      <developerConnection>scm:git:git@github.com:eclipse/lsp4jakarta.git</developerConnection>
+      <url>git@github.com:eclipse/lsp4jakarta.git</url>
+      <tag>HEAD</tag>
+    </scm>
 
-	<licenses>
-		<license>
-			<name>EPL-2.0</name>
-			<url>https://www.eclipse.org/legal/epl-2.0/</url>
-			<comments>Eclipse Public License 2.0</comments>
-		</license>
-	</licenses>
+  <licenses>
+    <license>
+      <name>EPL-2.0</name>
+      <url>https://www.eclipse.org/legal/epl-2.0/</url>
+      <comments>Eclipse Public License 2.0</comments>
+    </license>
+  </licenses>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
+    <maven.build.timestamp.format>yyyyMMdd-HHmm</maven.build.timestamp.format>
+    <dev.build.timestamp>${maven.build.timestamp}</dev.build.timestamp>
     <lsp4j.version>0.17.0</lsp4j.version>
     <releases.repo.id>repo.eclipse.org</releases.repo.id>
     <releases.repo.url>https://repo.eclipse.org/content/repositories/lsp4jakarta-releases/</releases.repo.url>
@@ -107,26 +109,98 @@
   </pluginRepositories>
 
   <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources/</directory>
+         <filtering>true</filtering>
+         <includes>
+           <include>**/*.properties</include>
+         </includes>
+      </resource>
+      <resource>
+        <directory>src/main/resources/</directory>
+        <filtering>false</filtering>
+        <excludes>
+          <exclude>**/*.properties</exclude>
+        </excludes>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <version>3.5.0</version>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.2.0</version>
+        <executions>
+          <execution>
+            <id>parse-version</id>
+            <goals>
+              <goal>parse-version</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>pl.project13.maven</groupId>
+        <artifactId>git-commit-id-plugin</artifactId>
+        <version>4.9.10</version>
+        <executions>
+          <execution>
+            <id>get-the-git-infos</id>
+            <goals>
+              <goal>revision</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <dotGitDirectory>${project.basedir}/../.git</dotGitDirectory>
+          <generateGitPropertiesFile>true</generateGitPropertiesFile>
+          <includeOnlyProperties>
+            <includeOnlyProperty>^git.commit.id.abbrev$</includeOnlyProperty>
+            <includeOnlyProperty>^git.commit.message.short$</includeOnlyProperty>
+            <includeOnlyProperty>^git.branch$</includeOnlyProperty>
+            <includeOnlyProperty>^git.build.version$</includeOnlyProperty>
+          </includeOnlyProperties>
+          <gitDescribe>
+            <skip>true</skip>
+          </gitDescribe>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.3.0</version>
         <executions>
           <execution>
             <id>make-assembly</id>
-            <phase>package</phase>
+            <phase>package</phase> <!-- bind to the packaging phase -->
             <goals>
-              <goal>single</goal>
+              <goal>shade</goal>
             </goals>
             <configuration>
-              <archive>
-                <manifest>
+              <shadedArtifactAttached>true</shadedArtifactAttached>
+              <shadedClassifierName>jar-with-dependencies</shadedClassifierName>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/ECLIPSE_.RSA</exclude>
+                    <exclude>META-INF/ECLIPSE_.SF</exclude>
+                  </excludes>
+                </filter>
+                <filter>
+                  <!-- Confusing to carry this forward in uber JAR -->
+                  <artifact>*:org.eclipse.lsp4mp.ls</artifact>
+                  <excludes>
+                    <exclude>version.properties</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>org.eclipse.lsp4jakarta.JakartaLanguageServerLauncher</mainClass>
-                </manifest>
-              </archive>
-              <descriptorRefs>
-                <descriptorRef>jar-with-dependencies</descriptorRef>
-              </descriptorRefs>
+                </transformer>
+              </transformers>
             </configuration>
           </execution>
         </executions>
@@ -135,15 +209,15 @@
   </build>
   
   <distributionManagement>
- 		<repository>
-			<id>${releases.repo.id}</id>
-			<name>Eclipse Releases Repository</name>
- 			<url>${releases.repo.url}</url>
-		</repository>
-		<snapshotRepository>
-		    <id>${snapshots.repo.id}</id>
-		    <name>Eclipse Snapshots Repository</name>
-		    <url>${snapshots.repo.url}</url>
-		</snapshotRepository>
-	</distributionManagement>
+     <repository>
+      <id>${releases.repo.id}</id>
+      <name>Eclipse Releases Repository</name>
+       <url>${releases.repo.url}</url>
+    </repository>
+    <snapshotRepository>
+        <id>${snapshots.repo.id}</id>
+        <name>Eclipse Snapshots Repository</name>
+        <url>${snapshots.repo.url}</url>
+    </snapshotRepository>
+  </distributionManagement>
 </project>
